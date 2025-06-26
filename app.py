@@ -57,6 +57,7 @@ def upload():
             file_path=file_path,
             tags=tags
         )
+        
         db.session.add(document)
         db.session.commit()
 
@@ -65,8 +66,8 @@ def upload():
 
     # GET method
     tenant_id = request.args.get("tenant_id", "")
-    documents = Document.query.filter_by(tenant_id=tenant_id).all() if tenant_id else []
-    for doc in documents:
+    documents = Document.query.filter_by(tenant_id=tenant_id).order_by(Document.uploaded_at.desc()).all()
+    for doc in documents:   
         doc.download_url = generate_presigned_url(doc.file_path)
 
     return render_template("index.html", docs=documents, tenant_id=tenant_id)
