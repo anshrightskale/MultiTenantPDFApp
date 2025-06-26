@@ -38,36 +38,38 @@ def generate_presigned_url(s3_path):
 def upload():
     if request.method == "POST":
         tenant_id = request.form.get("tenant_id")
-        file = request.files.get("file")
         tags = request.form.get("tags", "")
+        files = request.files.getlist("file")
 
-        if not tenant_id or not file or not file.filename.endswith(".pdf"):
+        # Filter valid PDF files
+        valid_files = [f for f in files if f and f.filename.endswith(".pdf")]
+
+        if not tenant_id or not valid_files:
             return "Invalid input", 400
 
-        # Upload to S3
-        unique_name = f"{uuid.uuid4()}_{secure_filename(file.filename)}"
-        s3_key = f"{tenant_id}/{unique_name}"
-        s3.upload_fileobj(file, BUCKET_NAME, s3_key)
+        # Upload all PDFs to S3 and store metadata
+        for file in valid_files:
+            unique_name = f"{uuid.uuid4()}_{secure_filename(file.filename)}"
+            s3_key = f"{tenant_id}/{unique_name}"
+            s3.upload_fileobj(file, BUCKET_NAME, s3_key)
 
-        # Save metadata
-        file_path = f"s3://{BUCKET_NAME}/{s3_key}"
-        document = Document(
-            tenant_id=tenant_id,
-            file_name=file.filename,
-            file_path=file_path,
-            tags=tags
-        )
-        
-        db.session.add(document)
+            file_path = f"s3://{BUCKET_NAME}/{s3_key}"
+            document = Document(
+                tenant_id=tenant_id,
+                file_name=file.filename,
+                file_path=file_path,
+                tags=tags
+            )
+            db.session.add(document)
+
         db.session.commit()
-
-        logging.info("Uploaded file %s for tenant %s", file.filename, tenant_id)
+        logging.info("Uploaded %d file(s) for tenant %s", len(valid_files), tenant_id)
         return redirect(url_for("upload", tenant_id=tenant_id))
 
-    # GET method
+    # GET method: fetch latest documents first
     tenant_id = request.args.get("tenant_id", "")
     documents = Document.query.filter_by(tenant_id=tenant_id).order_by(Document.uploaded_at.desc()).all()
-    for doc in documents:   
+    for doc in documents:
         doc.download_url = generate_presigned_url(doc.file_path)
 
     return render_template("index.html", docs=documents, tenant_id=tenant_id)
