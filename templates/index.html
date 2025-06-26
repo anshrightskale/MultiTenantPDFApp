@@ -68,18 +68,5 @@
     </div>
     {% endif %}
   </div>
-      <!-- Clear file and tags after submit -->
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        const form = document.querySelector("form");
-        form.addEventListener("submit", function () {
-          setTimeout(() => {
-            form.querySelector('input[name="tags"]').value = "";
-            form.querySelector('input[name="file"]').value = null;
-          }, 100); // Delay to let redirect happen
-        });
-      });
-    </script>
-
 </body>
 </html>
