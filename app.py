@@ -37,7 +37,7 @@ def generate_presigned_url(s3_path):
 @app.route("/", methods=["GET", "POST"])
 def upload():
     if request.method == "POST":
-        tenant_id = request.form.get("tenant_id")
+        tenant_id = request.form.get("organization_name")
         tags = request.form.get("tags", "")
         files = request.files.getlist("file")
 
