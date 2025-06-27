@@ -3,8 +3,12 @@ import os
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key')
-    SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(basedir, 'instance', 'documents.db')}"
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-    UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join(basedir, 'uploads'))
+    # Flask session security
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'change-this-in-prod')
 
+    # PostgreSQL connection string
+    SQLALCHEMY_DATABASE_URI = (
+        "postgresql://postgres:rightskaleupload@files-upload-flask-app-postgres-db.cf2cokasiq2h.us-east-2.rds.amazonaws.com:5432/postgres"
+    )
+
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
