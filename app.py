@@ -2,7 +2,7 @@ import os
 import uuid
 import logging
 from datetime import datetime
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for, session
 from werkzeug.utils import secure_filename
 from models import db, Document
 from config import Config
@@ -11,6 +11,7 @@ import boto3
 # Flask app setup
 app = Flask(__name__)
 app.config.from_object(Config)
+app.secret_key = app.config["SECRET_KEY"]  # Required for secure sessions
 db.init_app(app)
 
 # S3 setup
@@ -24,13 +25,14 @@ logging.basicConfig(level=logging.INFO)
 with app.app_context():
     db.create_all()
 
+# Helper to generate a presigned download URL
 def generate_presigned_url(s3_path):
     parts = s3_path.replace("s3://", "").split("/", 1)
     bucket, key = parts[0], parts[1]
     return s3.generate_presigned_url(
         "get_object",
         Params={"Bucket": bucket, "Key": key},
-        ExpiresIn=3600
+        ExpiresIn=3600  # 1 hour expiry
     )
 
 @app.route("/", methods=["GET", "POST"])
@@ -44,6 +46,9 @@ def upload():
 
         if not organization_id or not valid_files:
             return "Invalid input", 400
+
+        # ✅ Store tenant securely in server-side session
+        session["organization_id"] = organization_id
 
         for file in valid_files:
             unique_name = f"{uuid.uuid4()}_{secure_filename(file.filename)}"
@@ -61,11 +66,16 @@ def upload():
 
         db.session.commit()
         logging.info("Uploaded %d file(s) for org %s", len(valid_files), organization_id)
-        return redirect(url_for("upload", organization_id=organization_id))
+        return redirect(url_for("upload"))  # No org ID in URL
 
-    organization_id = request.args.get("organization_id", "")
-    documents = Document.query.filter_by(organization_id=organization_id).order_by(Document.uploaded_at.desc()).all()
-    for doc in documents:
-        doc.download_url = generate_presigned_url(doc.file_path)
+    # ✅ Use session to retrieve tenant for GET display
+    organization_id = session.get("organization_id", "")
+    documents = []
+
+    if organization_id:
+        documents = Document.query.filter_by(organization_id=organization_id)\
+                                  .order_by(Document.uploaded_at.desc()).all()
+        for doc in documents:
+            doc.download_url = generate_presigned_url(doc.file_path)
 
     return render_template("index.html", docs=documents, organization_id=organization_id)
