@@ -1,21 +1,23 @@
 import os
 import uuid
 import logging
-from datetime import datetime
 from flask import Flask, request, render_template, redirect, url_for, session
 from werkzeug.utils import secure_filename
 from models import db, Document
 from config import Config
+from dotenv import load_dotenv
 import boto3
 
-# Auth Config
-USERNAME = "admin"
-PASSWORD = "rightskale123"
+# Load environment variables
+load_dotenv()
+
+# Auth Config (loaded from .env)
+USERNAME = os.environ.get("APP_USERNAME")
+PASSWORD = os.environ.get("APP_PASSWORD")
 
 # Flask app setup
 app = Flask(__name__)
 app.config.from_object(Config)
-app.secret_key = app.config["SECRET_KEY"]  # Required for secure sessions
 db.init_app(app)
 
 # S3 setup
@@ -29,7 +31,7 @@ logging.basicConfig(level=logging.INFO)
 with app.app_context():
     db.create_all()
 
-# Routes
+# Login route
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -41,11 +43,13 @@ def login():
         return "Invalid credentials", 401
     return render_template("login.html")
 
+# Logout route
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
 
+# Upload route (protected)
 @app.route("/", methods=["GET", "POST"])
 def upload():
     if not session.get("logged_in"):
