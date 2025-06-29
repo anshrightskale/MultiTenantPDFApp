@@ -11,7 +11,7 @@ import boto3
 # Load environment variables
 load_dotenv()
 
-# Auth Config (loaded from .env)
+# Auth Config
 USERNAME = os.environ.get("APP_USERNAME")
 PASSWORD = os.environ.get("APP_PASSWORD")
 
@@ -60,7 +60,17 @@ def upload():
         tags = request.form.get("tags", "")
         files = request.files.getlist("file")
 
-        valid_files = [f for f in files if f and f.filename.endswith(".pdf")]
+        MAX_FILE_SIZE_MB = 10
+        valid_files = []
+
+        for f in files:
+            if f and f.filename.endswith(".pdf"):
+                f.seek(0, os.SEEK_END)
+                size_mb = f.tell() / (1024 * 1024)
+                f.seek(0)
+                if size_mb > MAX_FILE_SIZE_MB:
+                    return f"File {f.filename} exceeds {MAX_FILE_SIZE_MB}MB limit", 400
+                valid_files.append(f)
 
         if not organization_id or not valid_files:
             return "Invalid input", 400
@@ -83,4 +93,9 @@ def upload():
         logging.info("Uploaded %d file(s) for org %s", len(valid_files), organization_id)
         return redirect(url_for("upload"))
 
-    return render_template("index.html", docs=[], organization_id="")
+    return render_template("index.html")
+
+# Custom 413 error page
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    return render_template("error_413.html"), 413
