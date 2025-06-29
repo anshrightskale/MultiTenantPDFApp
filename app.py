@@ -8,6 +8,10 @@ from models import db, Document
 from config import Config
 import boto3
 
+# Auth Config
+USERNAME = "admin"
+PASSWORD = "rightskale123"
+
 # Flask app setup
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -25,18 +29,28 @@ logging.basicConfig(level=logging.INFO)
 with app.app_context():
     db.create_all()
 
-# Helper to generate a presigned download URL (optional, not used here)
-def generate_presigned_url(s3_path):
-    parts = s3_path.replace("s3://", "").split("/", 1)
-    bucket, key = parts[0], parts[1]
-    return s3.generate_presigned_url(
-        "get_object",
-        Params={"Bucket": bucket, "Key": key},
-        ExpiresIn=3600  # 1 hour expiry
-    )
+# Routes
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        if username == USERNAME and password == PASSWORD:
+            session["logged_in"] = True
+            return redirect(url_for("upload"))
+        return "Invalid credentials", 401
+    return render_template("login.html")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 @app.route("/", methods=["GET", "POST"])
 def upload():
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
+
     if request.method == "POST":
         organization_id = request.form.get("organization_id")
         tags = request.form.get("tags", "")
@@ -46,8 +60,6 @@ def upload():
 
         if not organization_id or not valid_files:
             return "Invalid input", 400
-
-        session["organization_id"] = organization_id
 
         for file in valid_files:
             unique_name = f"{uuid.uuid4()}_{secure_filename(file.filename)}"
@@ -67,6 +79,4 @@ def upload():
         logging.info("Uploaded %d file(s) for org %s", len(valid_files), organization_id)
         return redirect(url_for("upload"))
 
-    # ✅ Clean GET request — no document display, just fresh form
-    session.clear()
     return render_template("index.html", docs=[], organization_id="")
