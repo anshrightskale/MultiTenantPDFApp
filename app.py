@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.INFO)
 with app.app_context():
     db.create_all()
 
-# Helper to generate a presigned download URL
+# Helper to generate a presigned download URL (optional, not used here)
 def generate_presigned_url(s3_path):
     parts = s3_path.replace("s3://", "").split("/", 1)
     bucket, key = parts[0], parts[1]
@@ -67,9 +67,6 @@ def upload():
         logging.info("Uploaded %d file(s) for org %s", len(valid_files), organization_id)
         return redirect(url_for("upload"))
 
-    # ✅ Reset session on every GET request (fresh start)
+    # ✅ Clean GET request — no document display, just fresh form
     session.clear()
-    organization_id = ""
-    documents = []
-
-    return render_template("index.html", docs=documents, organization_id=organization_id)
+    return render_template("index.html", docs=[], organization_id="")
