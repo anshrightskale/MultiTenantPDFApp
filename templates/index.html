@@ -9,12 +9,14 @@
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
   <div class="w-full max-w-2xl bg-white shadow-xl rounded-2xl p-8 space-y-8">
 
-    <!-- Header -->
+    <!-- Centered Logo -->
+    <div class="flex justify-center">
+      <img src="/static/right-skale-logo.jpeg" alt="Company Logo" class="h-20 object-contain">
+    </div>
+
+    <!-- Header Text + Logout -->
     <div class="flex justify-between items-center">
-      <div class="flex items-center gap-2">
-        <img src="/static/right-skale-logo.jpeg" alt="Company Logo" class="h-10 object-contain">
-        <h2 class="text-xl font-semibold text-gray-800">Tenant Files Upload</h2>
-      </div>
+      <h2 class="text-2xl font-bold text-gray-800">Tenant Files Upload</h2>
       <a href="{{ url_for('logout') }}" class="text-sm text-blue-600 hover:underline">Logout</a>
     </div>
 
@@ -75,14 +77,12 @@
         return;
       }
 
-      // Show fake progress bar
       progressContainer.classList.remove("hidden");
       progressBar.style.width = "0%";
 
       const formData = new FormData(form);
       const totalFiles = files.length;
 
-      // Simulate progress bar
       let progress = 0;
       const interval = setInterval(() => {
         progress += 10;
@@ -90,22 +90,18 @@
         if (progress >= 100) clearInterval(interval);
       }, 100);
 
-      // Actual Upload
       const response = await fetch("/", {
         method: "POST",
         body: formData
       });
 
-      // After response
       clearInterval(interval);
       progressBar.style.width = `100%`;
 
       if (response.redirected) {
-        // Show success modal
         uploadCount.textContent = `Uploaded ${totalFiles} file(s) successfully.`;
         modal.classList.remove("hidden");
 
-        // Reset form
         form.reset();
         setTimeout(() => {
           progressContainer.classList.add("hidden");
