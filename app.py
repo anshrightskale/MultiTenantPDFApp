@@ -47,7 +47,6 @@ def upload():
         if not organization_id or not valid_files:
             return "Invalid input", 400
 
-        # ✅ Store tenant securely in server-side session
         session["organization_id"] = organization_id
 
         for file in valid_files:
@@ -66,16 +65,11 @@ def upload():
 
         db.session.commit()
         logging.info("Uploaded %d file(s) for org %s", len(valid_files), organization_id)
-        return redirect(url_for("upload"))  # No org ID in URL
+        return redirect(url_for("upload"))
 
-    # ✅ Use session to retrieve tenant for GET display
-    organization_id = session.get("organization_id", "")
+    # ✅ Reset session on every GET request (fresh start)
+    session.clear()
+    organization_id = ""
     documents = []
-
-    if organization_id:
-        documents = Document.query.filter_by(organization_id=organization_id)\
-                                  .order_by(Document.uploaded_at.desc()).all()
-        for doc in documents:
-            doc.download_url = generate_presigned_url(doc.file_path)
 
     return render_template("index.html", docs=documents, organization_id=organization_id)
